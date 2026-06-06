@@ -37,7 +37,7 @@ public:
 
     virtual bool Move(const std::string& src, const std::string& dest) = 0;
 
-    virtual std::vector<std::string> Find(const std::string& path, const std::string& pattern) const = 0;
+    virtual std::vector<std::string> Find(const std::string& path, std::string pattern = "*") const = 0;
 
     virtual bool Exists(const std::string& path) const = 0;
 
