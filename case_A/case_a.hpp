@@ -46,9 +46,9 @@ private:
 
     std::unique_ptr<Node> root_ = std::make_unique<Node>("/", NodeType::Dir, nullptr);
 
-    size_t total_file_bytes = 0;
-    size_t file_count = 0;
-    size_t dir_count = 1;
+    size_t total_file_bytes_ = 0;
+    size_t file_count_ = 0;
+    size_t dir_count_ = 1;
 };
 
 typedef TreeFileSystem Case_A;
