@@ -49,6 +49,11 @@ private:
     size_t total_file_bytes_ = 0;
     size_t file_count_ = 0;
     size_t dir_count_ = 1;
+
+    std::vector<std::string> Split(const std::string& str, char delimeter = '/') const;
+    Node* GetChild(Node* cur, const std::string& name) const;
+    Node* FindNode(const std::string& path) const;
+    Node* GetParentDir(const std::string& path);
 };
 
 typedef TreeFileSystem Case_A;
