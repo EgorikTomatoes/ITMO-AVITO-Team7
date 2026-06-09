@@ -44,6 +44,7 @@ private:
             : name(std::move(node_name)), type(node_type), parent(node_parent) {}
     };
 
+    // все пути начинаются с '/'
     std::unique_ptr<Node> root_ = std::make_unique<Node>("/", NodeType::Dir, nullptr);
 
     size_t total_file_bytes_ = 0;

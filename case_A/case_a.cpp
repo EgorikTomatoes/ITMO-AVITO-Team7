@@ -1,7 +1,7 @@
 #include "case_a.hpp"
-#include <execution>
 #include <memory>
-#include <type_traits>
+#include <optional>
+#include <vector>
 
 std::optional<std::string> TreeFileSystem::ReadFile(const std::string& path) const {
     Node* node = FindNode(path);
@@ -11,7 +11,7 @@ std::optional<std::string> TreeFileSystem::ReadFile(const std::string& path) con
 }
 
 bool TreeFileSystem::WriteToFile(const std::string& path, const std::string& data){
-    if (path.empty() || path == "/") return false;
+    if (path.empty() || path == "/" || path[0] != '/') return false;
 
     Node* node = FindNode(path);
     
@@ -41,6 +41,107 @@ bool TreeFileSystem::WriteToFile(const std::string& path, const std::string& dat
     return true;
 }
 
+bool TreeFileSystem::MakeDir(const std::string& path){
+    if (path.empty() || path == "/" || path[0] != '/') return false;
+    if (FindNode(path)) return false;
+
+    Node* parent = GetParentDir(path);
+    if (!parent || parent->type != NodeType::Dir) return false;
+
+    std::vector<std::string> names = Split(path);
+    if (names.empty()) return false;
+    std::string new_name = names.back();
+
+    auto new_node = std::make_unique<Node>(new_name, NodeType::Dir, parent);
+    parent->children.push_back(std::move(new_node));
+    dir_count_++;
+
+    return true;
+}
+
+std::vector<std::string> TreeFileSystem::List(const std::string& path) const {
+    Node* node = FindNode(path);
+    if (!node || node->type != NodeType::Dir) return {};
+
+    std::vector<std::string> ans;
+    for (auto& child : node->children){
+        ans.push_back(child->name);
+    }
+    return ans;
+}
+
+bool TreeFileSystem::Move(const std::string& src, const std::string& dest){
+    if (src.empty() || dest.empty()) return false;
+    if (src == "/" || dest == "/") return false;
+
+    Node* node = FindNode(src);
+    if (!node) return false;
+
+    Node* old_parent = node->parent;
+    if (!old_parent) return false;
+
+    Node* new_parent = nullptr;
+    std::string new_name;
+
+    Node* dest_node = FindNode(dest);
+
+    if (dest_node){
+        if (dest_node->type != NodeType::Dir){
+            return false;
+        }
+        // добавляем в существующую папку
+        new_parent = dest_node;
+        new_name = node->name;
+    }
+    else {
+        // новая папка, возможно новое имя файла
+        new_parent = GetParentDir(dest);
+        std::vector<std::string> names = Split(dest);
+
+        if (!new_parent || new_parent->type != NodeType::Dir || names.empty()) return false;
+        new_name = names.back();
+    }
+
+    if (GetChild(new_parent, new_name)) return false;
+
+    Node* cur = new_parent;
+    while (cur){
+        if (cur == node) return false; // проверка на перемещение в себя
+        cur = cur->parent;
+    }
+
+    std::unique_ptr<Node> moving;
+
+    for (auto it = old_parent->children.begin(); it != old_parent->children.end(); ++it){
+        if (it->get() == node){
+            moving = std::move(*it);
+            old_parent->children.erase(it);
+            break;
+        }
+    }
+
+    if (!moving) return false;
+    moving->name = new_name;
+    moving->parent = new_parent;
+    new_parent->children.push_back(std::move(moving));
+    return true;
+}
+
+
+// TODO: find with regex
+// TODO: states
+
+bool TreeFileSystem::Exists(const std::string& path) const {
+    return FindNode(path) != nullptr;
+}
+
+void TreeFileSystem::Clear(){
+    root_ = std::make_unique<Node>("/", NodeType::Dir, nullptr);
+
+    total_file_bytes_ = 0;
+    file_count_ = 0;
+    dir_count_ = 1;
+}
 
 
 
@@ -79,7 +180,7 @@ TreeFileSystem::Node* TreeFileSystem::GetChild(Node* cur, const std::string& nam
 }
 
 TreeFileSystem::Node* TreeFileSystem::FindNode(const std::string& path) const{
-    if (path.empty()) return nullptr;
+    if (path.empty() || path[0] != '/') return nullptr;
     if (path == "/") return root_.get();
 
     Node* cur = root_.get();
