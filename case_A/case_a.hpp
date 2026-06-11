@@ -7,6 +7,7 @@
 #include <optional>
 #include <vector>
 #include <utility>
+#include <regex>
 
 
 class TreeFileSystem : public IFileSystem {
@@ -58,6 +59,8 @@ private:
 
     size_t GetNodeMemory(const Node* node) const;
     size_t GetSubtreeMemory(const Node* node) const;
+
+    void FindRegex(const Node* node, const std::string& path, const std::regex& pattern, std::vector<std::string>& res) const;
 };
 
 typedef TreeFileSystem Case_A;

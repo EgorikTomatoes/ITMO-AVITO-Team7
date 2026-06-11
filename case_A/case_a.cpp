@@ -1,7 +1,9 @@
 #include "case_a.hpp"
+
 #include <memory>
 #include <optional>
 #include <vector>
+#include <regex>
 
 std::optional<std::string> TreeFileSystem::ReadFile(const std::string& path) const {
     Node* node = FindNode(path);
@@ -127,8 +129,24 @@ bool TreeFileSystem::Move(const std::string& src, const std::string& dest){
     return true;
 }
 
+std::vector<std::string> TreeFileSystem::Find(const std::string& path, std::string pattern) const {
+    if (path.empty() || path[0] != '/') return {};
 
-// TODO: find with regex
+    Node* node = FindNode(path);
+    if (!node) return {};
+
+    std::regex reg;
+    try{
+        reg = std::regex(pattern);
+    } catch (std::regex_error&) {
+        return {};
+    }
+    
+    std::vector<std::string> ans;
+    FindRegex(node, path, reg, ans);
+    return ans;
+}
+
 
 std::optional<NodeInfo> TreeFileSystem::NodeState(const std::string& path) const {
     if (path.empty() || path[0] != '/') return std::nullopt;
@@ -247,4 +265,21 @@ size_t TreeFileSystem::GetSubtreeMemory(const Node* node) const {
     }
 
     return ans;
+}
+
+void TreeFileSystem::FindRegex(const Node* node, const std::string& path, const std::regex& pattern, 
+                                std::vector<std::string>& res) const{
+    if (!node) return;
+    
+    if (path != "/" && std::regex_match(node->name, pattern)){
+        res.push_back(path);
+    }
+    if (node->type != NodeType::Dir) return;
+
+    for (auto& child : node->children){
+        std::string child_path = (path != "/") ? path : "";
+        child_path += "/" + child->name;
+
+        FindRegex(child.get(), child_path, pattern, res);
+    }
 }
