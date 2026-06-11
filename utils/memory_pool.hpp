@@ -46,7 +46,7 @@ public:
     MemoryPool& operator=(const MemoryPool&) = delete;
 
     MemoryPool(MemoryPool&& other) noexcept             // Перемещение пула разрешено
-        : free_head_(std::exchange(ohter.free_head_, nullptr)),
+        : free_head_(std::exchange(other.free_head_, nullptr)),
           chunks_(std::move(other.chunks_)),
           total_allocated_bytes_(std::exchange(other.total_allocated_bytes_,0)),
           active_objects_(std::exchange(other.active_objects_,0))
@@ -63,8 +63,8 @@ public:
         return *this;
     }
 
-    template <typename... Args>                         // Выделение памяти из пулка и создание объекта типа T
-    T* Allocate(Args&&.. args) {
+    template <typename... Args>                         // Выделение памяти из пула и создание объекта типа T
+    T* Allocate(Args&&... args) {
         if (!free_head_) {
             AllocateChunk();
         }
