@@ -129,7 +129,29 @@ bool TreeFileSystem::Move(const std::string& src, const std::string& dest){
 
 
 // TODO: find with regex
-// TODO: states
+
+std::optional<NodeInfo> TreeFileSystem::NodeState(const std::string& path) const {
+    if (path.empty() || path[0] != '/') return std::nullopt;
+
+    Node* node = FindNode(path);
+    if (!node) return std::nullopt;
+
+    NodeInfo info;
+    info.path = path;
+    info.type = node->type;
+    info.size_bytes = GetNodeMemory(node);
+    return info;
+}
+
+std::optional<SystemInfo> TreeFileSystem::SystemState() const {
+    SystemInfo info;
+    info.total_file_bytes = total_file_bytes_;
+    info.total_size_bytes = GetSubtreeMemory(root_.get());
+    info.file_count = file_count_;
+    info.dir_count = dir_count_;
+    info.node_count = file_count_ + dir_count_;
+    return info;
+}
 
 bool TreeFileSystem::Exists(const std::string& path) const {
     return FindNode(path) != nullptr;
@@ -204,4 +226,25 @@ TreeFileSystem::Node* TreeFileSystem::GetParentDir(const std::string& path){
         if (!cur || cur->type != NodeType::Dir) return nullptr;
     }
     return cur;
+}
+
+size_t TreeFileSystem::GetNodeMemory(const Node* node) const {
+    if (!node) return 0;
+    return sizeof(Node) 
+            + node->name.capacity() 
+            + node->children.capacity() * sizeof(std::unique_ptr<Node>);
+}
+
+size_t TreeFileSystem::GetSubtreeMemory(const Node* node) const {
+    if (!node) return 0;
+    size_t ans = GetNodeMemory(node);
+
+    if (node->type == NodeType::File){
+        ans += node->data.capacity();
+    }
+    for (auto& child : node->children){
+        ans += GetSubtreeMemory(child.get());
+    }
+
+    return ans;
 }

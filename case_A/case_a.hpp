@@ -55,6 +55,9 @@ private:
     Node* GetChild(Node* cur, const std::string& name) const;
     Node* FindNode(const std::string& path) const;
     Node* GetParentDir(const std::string& path);
+
+    size_t GetNodeMemory(const Node* node) const;
+    size_t GetSubtreeMemory(const Node* node) const;
 };
 
 typedef TreeFileSystem Case_A;
