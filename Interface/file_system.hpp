@@ -12,7 +12,7 @@ enum class NodeType{
 struct NodeInfo{
     std::string path;
     NodeType type;
-    size_t size_bytes;
+    size_t size_bytes; // память реализации (без памяти данных файла)
 };
 
 struct SystemInfo{
