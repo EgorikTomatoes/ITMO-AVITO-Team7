@@ -76,7 +76,7 @@ size_t TreeHashFileSystem::GetNodeNotDataMemory(const FsNode* node) const {
         + (node->children.capacity() * sizeof(FsNode*));
 }
 
-void TreeHashFileSystem::FindRecursive(FsNode* current_node, const std::string& pattern, std::vector<std::string>& matches) const {
+void TreeHashFileSystem::FindRecursive(const FsNode* current_node, const std::string& pattern, std::vector<std::string>& matches) const {
     if (!current_node) return;
     if (utils::PathUtils::MatchPattern(current_node->name, pattern)) {
         matches.push_back(current_node->full_path);

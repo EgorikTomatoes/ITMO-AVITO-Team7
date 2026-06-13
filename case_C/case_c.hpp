@@ -55,7 +55,9 @@ private:
     FsNode* GetParentDirectory(std::string_view path) const;    // Ищет родительскую ноду
 
     FsNode* CreateNewNode(NodeType node_type, std::string full_path);
+
     size_t GetNodeNotDataMemory(const FsNode* node) const;
+    void FindIterative(const FsNode* current_node, const std::string& pattern, std::vector<std::string>& matches) const;
 };
 
 typedef FlatFileSystem Case_C;

@@ -56,6 +56,17 @@ size_t FlatFileSystem::GetNodeNotDataMemory(const FsNode* node) const {
         + node->full_path.capacity();
 }
 
+void FlatFileSystem::FindIterative(const FsNode* current_node, const std::string& pattern, std::vector<std::string>& matches) const {
+    std::string prefix = (utils::PathUtils::IsRootPath(current_node->full_path)) ? "/" : current_node->full_path + "/";
+    for (const auto& [path, node]: path_index_) {
+        if ((path == current_node->full_path || path.starts_with(current_node->full_path)) && 
+            utils::PathUtils::MatchPattern(node->name,pattern)) 
+        {   
+            matches.push_back(std::string(path));
+        }
+    }
+}
+
 // API файловой системы
 
 
@@ -105,15 +116,83 @@ bool FlatFileSystem::MakeDir(const std::string& path) {
 }
 
 std::vector<std::string> FlatFileSystem::List(const std::string& path) const {
+    if (!utils::PathUtils::IsValidPath(path)) return {};
+    if (FsNode* dir_node = GetDirectory(path)) {
+        std::vector<std::string> answer;
+        for (const auto& [node_path, node]: path_index_) {
+            if (auto parent_path_opt = utils::PathUtils::GetParentPath(node_path); 
+                parent_path_opt.has_value() && parent_path_opt.value() == path) 
+            {
+                answer.push_back(node->name);
+            }
+        }
 
+        return answer;
+    }
+
+    return {};
 }
 
 bool FlatFileSystem::Move(const std::string& src, const std::string& dest) {
+    if (!utils::PathUtils::IsValidPath(src) || !utils::PathUtils::IsValidPath(dest) || utils::PathUtils::IsRootPath(src)) return false;
 
+    if (FsNode* starting_node = GetNode(src)) {
+        std::string new_parent_path;
+        std::string new_name;
+        // Перемещение внутрь существующей директории
+        if (GetDirectory(dest)) {
+            new_parent_path = dest;
+            new_name = starting_node->name;
+        }
+        // Перемещение в новое место с переименованием
+        else {
+            auto parent_opt = utils::PathUtils::GetParentPath(dest);
+            if (!parent_opt.has_value() || !GetDirectory(parent_opt.value())) return false;
+            new_parent_path = std::string(parent_opt.value());
+            new_name = std::string(utils::PathUtils::GetFileName(dest).value_or(""));
+        }
+
+        std::string new_full_path = utils::PathUtils::Join(new_parent_path,new_name);
+        if (GetNode(new_full_path)) return false;                        // Коллизия имён
+        std::string src_prefix = src + "/";
+        if (dest == src || dest.starts_with(src_prefix)) return false;   // Циклическая защита: нельзя переместить ноду в своё поддерево
+
+        std::vector<FsNode*> nodes_to_move;             // 1) Cобирааем все узлы для перемещения
+        for (const auto& [path, node]: path_index_) {
+            if (path == src || path.starts_with(src_prefix)) nodes_to_move.push_back(node);
+        }
+
+        for (auto node_to_move: nodes_to_move) {        // 2) Удаляем старые ключи
+            path_index_.erase(node_to_move->full_path);
+        }
+
+        for (auto node_to_move: nodes_to_move) {        // 3) Обновление пути (и имени если нужно)
+            if (node_to_move == starting_node) {
+                node_to_move->name = new_name;
+                node_to_move->full_path = new_full_path;
+            }
+            else {
+                node_to_move->full_path.replace(0,src.length(),new_full_path);
+            }
+            path_index_[node_to_move->full_path] = node_to_move;
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 std::vector<std::string> FlatFileSystem::Find(const std::string& path, std::string pattern) const {
+    if (!utils::PathUtils::IsValidPath(path)) return {};
 
+    if (FsNode* start_node = GetNode(path)) {
+        std::vector<std::string> matches;
+        FindIterative(start_node,pattern,matches);
+        return matches;
+    }
+
+    return {};
 }
 
 bool FlatFileSystem::Exists(const std::string& path) const {

@@ -66,7 +66,7 @@ private:
     void UpdatePathsRecursive(FsNode* node, std::string_view new_parent_path);
 
     size_t GetNodeNotDataMemory(const FsNode* node) const;
-    void FindRecursive(FsNode* current_node, const std::string& pattern, std::vector<std::string>& matches) const;
+    void FindRecursive(const FsNode* current_node, const std::string& pattern, std::vector<std::string>& matches) const;
 };
 
 typedef TreeHashFileSystem Case_B;
