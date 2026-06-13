@@ -5,6 +5,7 @@
 #include <vector>
 #include <optional>
 #include <cstddef>
+#include <regex>
 
 namespace utils {
 
@@ -57,7 +58,7 @@ public:
 
     static std::optional<std::vector<std::string_view>> Split(std::string_view path) { // Разбивает путь на токены для обхода дерева
         if (!IsValidPath(path)) return std::nullopt;
-        if (IsRootPath(path)) return {};
+        if (IsRootPath(path)) return std::vector<std::string_view>{};
         if (path.back() == '/') path.remove_suffix(1);
 
         std::vector<std::string_view> result;
@@ -81,6 +82,45 @@ public:
 
         if (IsRootPath(parent_path)) return std::string(parent_path) + std::string(child_name);
         return std::string(parent_path) + "/" + std::string(child_name);
-    }         
+    }     
+
+    /*
+        Контракт файловой системы: поддерживаем стандартные glob-паттерны, которые используются в проводниках Windows/MacOs/Linux
+    Данный метод нужен для эквивалентой трансляции glob-паттерна в регулярное выражение (в СТАНДАРТЕ C++ нет поддержки glob-паттерно, но есть <regex>)
+    */
+    static std::string GlobToRegex(std::string_view glob_pattern) {
+        std::string regex_pattern;
+        for (size_t i = 0; i < glob_pattern.length(); ++i) {
+            char c = glob_pattern[i];
+            if (c == '*') {
+                regex_pattern += ".*";
+            }
+            else if (c == '?') {
+                regex_pattern += ".";
+            }
+            else if (c == '!' && i > 0 && glob_pattern[i-1] == '[') {
+                regex_pattern += "^";
+            }
+            else if (std::string(".+^$()|{}\\").find(c) != std::string::npos) {
+                regex_pattern += "\\";
+                regex_pattern += c;
+            }
+            else {
+                regex_pattern += c;
+            }
+        }
+
+        return regex_pattern;
+    }
+
+    static bool MatchPattern(std::string_view name, std::string_view glob_pattern) {
+        try {
+            std::regex rx(GlobToRegex(glob_pattern));
+            return std::regex_match(std::string(name), rx);
+        }
+        catch (...) {
+            return false;
+        }
+    }
 };
 } // namespace utils

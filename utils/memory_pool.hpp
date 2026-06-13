@@ -54,7 +54,10 @@ public:
 
     MemoryPool& operator=(MemoryPool&& other) noexcept {
         if (this != &other) {
-            chunks_.clear();
+            // Контракт:
+            //  memory pool не обязан знать про структуру данных,для которых выделяется память
+            //  Поэтому перед перемещением обязательно вызвать метод Clear у объекта файловой системы, куда присваиваем
+            chunks_.clear();                           
             free_head_ = std::exchange(other.free_head_, nullptr);
             chunks_    = std::move(other.chunks_);
             total_allocated_bytes_ = std::exchange(other.total_allocated_bytes_,0);
