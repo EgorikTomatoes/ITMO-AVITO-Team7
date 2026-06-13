@@ -1,6 +1,5 @@
 #include "case_b.hpp"
 #include <algorithm>
-#include <regex>
 
 TreeHashFileSystem::TreeHashFileSystem() {
     InitRoot();
