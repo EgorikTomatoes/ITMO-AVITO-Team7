@@ -1,11 +1,32 @@
 #include "case_a.hpp"
 
+#include <cstddef>
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <vector>
 #include <regex>
 
+using pu = utils::PathUtils;
+
+TreeFileSystem::TreeFileSystem() {
+    root_ = node_pool_.Allocate("/", NodeType::Dir, nullptr);
+}
+
+TreeFileSystem::~TreeFileSystem(){
+    DeleteTree(root_);
+}
+
+void TreeFileSystem::DeleteTree(Node* node){
+    if (!node) return;
+    for (Node* child : node->children){
+        DeleteTree(child);
+    }
+    node_pool_.Deallocate(node);
+}
+
 std::optional<std::string> TreeFileSystem::ReadFile(const std::string& path) const {
+    if (!pu::IsValidPath(path)) return std::nullopt;
     Node* node = FindNode(path);
 
     if (!node || node->type != NodeType::File) return std::nullopt;
@@ -13,7 +34,7 @@ std::optional<std::string> TreeFileSystem::ReadFile(const std::string& path) con
 }
 
 bool TreeFileSystem::WriteToFile(const std::string& path, const std::string& data){
-    if (path.empty() || path == "/" || path[0] != '/') return false;
+    if (!pu::IsValidPath(path) || pu::IsRootPath(path)) return false;
 
     Node* node = FindNode(path);
     
@@ -26,46 +47,53 @@ bool TreeFileSystem::WriteToFile(const std::string& path, const std::string& dat
         return true;
     }
 
-    Node* parent = GetParentDir(path);
+    auto parent_path = pu::GetParentPath(path);
+    if (!parent_path) return false;
+
+    Node* parent = FindNode(*parent_path);
     if (!parent || parent->type != NodeType::Dir) return false;
 
-    std::vector<std::string> names = Split(path);
-    if (names.empty()) return false;
-    std::string name = names.back();
+    auto name = pu::GetFileName(path);
+    if (!name) return false;
 
-    auto new_node = std::make_unique<Node>(name, NodeType::File, parent);
+    Node* new_node = node_pool_.Allocate(std::string(*name), NodeType::File, parent);
     new_node->data = data;
 
     total_file_bytes_ += data.size();
     file_count_++;
-    parent->children.push_back(std::move(new_node));
+    parent->children.push_back(new_node);
     
     return true;
 }
 
 bool TreeFileSystem::MakeDir(const std::string& path){
-    if (path.empty() || path == "/" || path[0] != '/') return false;
+    if (!pu::IsValidPath(path) || pu::IsRootPath(path)) return false;
     if (FindNode(path)) return false;
 
-    Node* parent = GetParentDir(path);
+    auto parent_path = pu::GetParentPath(path);
+    if (!parent_path) return false;
+
+    Node* parent = FindNode(*parent_path);
     if (!parent || parent->type != NodeType::Dir) return false;
 
-    std::vector<std::string> names = Split(path);
-    if (names.empty()) return false;
-    std::string new_name = names.back();
+    auto new_name = pu::GetFileName(path);
+    if (!new_name) return false;
 
-    auto new_node = std::make_unique<Node>(new_name, NodeType::Dir, parent);
-    parent->children.push_back(std::move(new_node));
+    Node* new_node = node_pool_.Allocate(std::string(*new_name), NodeType::Dir, parent);
+    parent->children.push_back(new_node);
     dir_count_++;
 
     return true;
 }
 
 std::vector<std::string> TreeFileSystem::List(const std::string& path) const {
+    if (!pu::IsValidPath(path)) return {};
+
     Node* node = FindNode(path);
     if (!node || node->type != NodeType::Dir) return {};
 
     std::vector<std::string> ans;
+    ans.reserve(node->children.size());
     for (auto& child : node->children){
         ans.push_back(child->name);
     }
@@ -73,8 +101,8 @@ std::vector<std::string> TreeFileSystem::List(const std::string& path) const {
 }
 
 bool TreeFileSystem::Move(const std::string& src, const std::string& dest){
-    if (src.empty() || dest.empty()) return false;
-    if (src == "/" || dest == "/") return false;
+    if (!pu::IsValidPath(src) || !pu::IsValidPath(dest)) return false;
+    if (pu::IsRootPath(src) || pu::IsRootPath(dest)) return false;
 
     Node* node = FindNode(src);
     if (!node) return false;
@@ -97,11 +125,13 @@ bool TreeFileSystem::Move(const std::string& src, const std::string& dest){
     }
     else {
         // новая папка, возможно новое имя файла
-        new_parent = GetParentDir(dest);
-        std::vector<std::string> names = Split(dest);
+        auto parent_path = pu::GetParentPath(dest);
+        auto name = pu::GetFileName(dest);
+        if (!parent_path || !name) return false;
 
-        if (!new_parent || new_parent->type != NodeType::Dir || names.empty()) return false;
-        new_name = names.back();
+        new_parent = FindNode(*parent_path);
+        if (!new_parent || new_parent->type != NodeType::Dir) return false;
+        new_name = *name;
     }
 
     if (GetChild(new_parent, new_name)) return false;
@@ -112,44 +142,33 @@ bool TreeFileSystem::Move(const std::string& src, const std::string& dest){
         cur = cur->parent;
     }
 
-    std::unique_ptr<Node> moving;
-
     for (auto it = old_parent->children.begin(); it != old_parent->children.end(); ++it){
-        if (it->get() == node){
-            moving = std::move(*it);
+        if (*it== node){
             old_parent->children.erase(it);
             break;
         }
     }
 
-    if (!moving) return false;
-    moving->name = new_name;
-    moving->parent = new_parent;
-    new_parent->children.push_back(std::move(moving));
+    node->name = new_name;
+    node->parent = new_parent;
+    new_parent->children.push_back(node);
     return true;
 }
 
 std::vector<std::string> TreeFileSystem::Find(const std::string& path, std::string pattern) const {
-    if (path.empty() || path[0] != '/') return {};
+    if (!pu::IsValidPath(path)) return {};
 
     Node* node = FindNode(path);
     if (!node) return {};
 
-    std::regex reg;
-    try{
-        reg = std::regex(pattern);
-    } catch (std::regex_error&) {
-        return {};
-    }
-    
     std::vector<std::string> ans;
-    FindRegex(node, path, reg, ans);
+    FindPattern(node, path, pattern, ans);
     return ans;
 }
 
 
 std::optional<NodeInfo> TreeFileSystem::NodeState(const std::string& path) const {
-    if (path.empty() || path[0] != '/') return std::nullopt;
+    if (!pu::IsValidPath(path)) return std::nullopt;
 
     Node* node = FindNode(path);
     if (!node) return std::nullopt;
@@ -164,7 +183,7 @@ std::optional<NodeInfo> TreeFileSystem::NodeState(const std::string& path) const
 std::optional<SystemInfo> TreeFileSystem::SystemState() const {
     SystemInfo info;
     info.total_file_bytes = total_file_bytes_;
-    info.total_size_bytes = GetSubtreeMemory(root_.get());
+    info.total_size_bytes = node_pool_.GetTotalAllocatedBytes() + total_file_bytes_;
     info.file_count = file_count_;
     info.dir_count = dir_count_;
     info.node_count = file_count_ + dir_count_;
@@ -176,8 +195,9 @@ bool TreeFileSystem::Exists(const std::string& path) const {
 }
 
 void TreeFileSystem::Clear(){
-    root_ = std::make_unique<Node>("/", NodeType::Dir, nullptr);
+    DeleteTree(root_);
 
+    root_ = node_pool_.Allocate("/", NodeType::Dir, nullptr);
     total_file_bytes_ = 0;
     file_count_ = 0;
     dir_count_ = 1;
@@ -185,63 +205,29 @@ void TreeFileSystem::Clear(){
 
 
 
-std::vector<std::string> TreeFileSystem::Split(const std::string& str, char delimeter) const {
-    std::vector<std::string> res;
-    std::string cur;
-
-    for (char ch : str){
-        if (ch == delimeter){
-            if (!cur.empty()){
-                res.push_back(cur);
-                cur.clear();
-            }
-        } else {
-            cur += ch;
-        }
-    }
-
-    if (!cur.empty()){
-        res.push_back(cur);
-    }
-
-    return res;
-}
-
-TreeFileSystem::Node* TreeFileSystem::GetChild(Node* cur, const std::string& name) const{
+TreeFileSystem::Node* TreeFileSystem::GetChild(Node* cur, std::string_view name) const{
     if (!cur || cur->type != NodeType::Dir) return nullptr;
 
     for (auto& child : cur->children){
         if (child->name == name){
-            return child.get();
+            return child;
         }
     }
 
     return nullptr;
 }
 
-TreeFileSystem::Node* TreeFileSystem::FindNode(const std::string& path) const{
-    if (path.empty() || path[0] != '/') return nullptr;
-    if (path == "/") return root_.get();
+TreeFileSystem::Node* TreeFileSystem::FindNode(std::string_view path) const{
+    if (!pu::IsValidPath(path)) return nullptr;
+    if (pu::IsRootPath(path)) return root_;
 
-    Node* cur = root_.get();
-    std::vector<std::string> names = Split(path);
+    Node* cur = root_;
+    auto names = pu::Split(path);
+    if (!names) return nullptr;
 
-    for (auto& name : names){
+    for (auto name : *names){
         cur = GetChild(cur, name);
         if (!cur) return nullptr;
-    }
-    return cur;
-}
-
-TreeFileSystem::Node* TreeFileSystem::GetParentDir(const std::string& path){
-    std::vector<std::string> names = Split(path);
-    if (names.empty()) return nullptr;
-
-    Node* cur = root_.get();
-
-    for (size_t i = 0; i + 1 < names.size(); ++i){
-        cur = GetChild(cur, names[i]);
-        if (!cur || cur->type != NodeType::Dir) return nullptr;
     }
     return cur;
 }
@@ -250,7 +236,7 @@ size_t TreeFileSystem::GetNodeMemory(const Node* node) const {
     if (!node) return 0;
     return sizeof(Node) 
             + node->name.capacity() 
-            + node->children.capacity() * sizeof(std::unique_ptr<Node>);
+            + node->children.capacity() * sizeof(Node*);
 }
 
 size_t TreeFileSystem::GetSubtreeMemory(const Node* node) const {
@@ -261,25 +247,23 @@ size_t TreeFileSystem::GetSubtreeMemory(const Node* node) const {
         ans += node->data.capacity();
     }
     for (auto& child : node->children){
-        ans += GetSubtreeMemory(child.get());
+        ans += GetSubtreeMemory(child);
     }
 
     return ans;
 }
 
-void TreeFileSystem::FindRegex(const Node* node, const std::string& path, const std::regex& pattern, 
+void TreeFileSystem::FindPattern(const Node* node, const std::string& path, std::string_view pattern, 
                                 std::vector<std::string>& res) const{
     if (!node) return;
     
-    if (path != "/" && std::regex_match(node->name, pattern)){
+    if (!utils::PathUtils::IsRootPath(path) && utils::PathUtils::MatchPattern(node->name, pattern)){
         res.push_back(path);
     }
     if (node->type != NodeType::Dir) return;
 
     for (auto& child : node->children){
-        std::string child_path = (path != "/") ? path : "";
-        child_path += "/" + child->name;
-
-        FindRegex(child.get(), child_path, pattern, res);
+        std::string child_path = pu::Join(path, child->name);
+        FindPattern(child, child_path, pattern, res);
     }
 }
