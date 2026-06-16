@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "case_A/case_a.hpp"
-// #include "case_B/case_b.hpp"
-// #include "case_C/case_c.hpp"
+#include "case_B/case_b.hpp"
+#include "case_C/case_c.hpp"
 
 template <typename T>
 class TreeStructureTest : public ::testing::Test {
@@ -13,7 +13,7 @@ protected:
     }
 };
 
-using FSTypes = ::testing::Types<Case_A /*, Case_B, Case_C*/>;
+using FSTypes = ::testing::Types<Case_A, Case_B, Case_C>;
 TYPED_TEST_SUITE(TreeStructureTest, FSTypes);
 
 // внтуренние узлы(ветки)

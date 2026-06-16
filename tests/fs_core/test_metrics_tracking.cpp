@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "case_a.hpp"
+#include "case_A/case_a.hpp"
 
 template <typename T>
 class MetricsTest : public ::testing::Test {
@@ -32,11 +32,7 @@ TYPED_TEST(MetricsTest, SystemCountersUpdateProperly) {
     EXPECT_EQ(final_state->dir_count, 3); // "/", "branch_1", "branch_2"
     EXPECT_EQ(final_state->file_count, 1); // "leaf"
     EXPECT_EQ(final_state->total_file_bytes, 5); 
-
-    // проверка инварианта узлов
     EXPECT_EQ(final_state->node_count, final_state->dir_count + final_state->file_count);
-    
-    // проверка инварианта памяти
     EXPECT_GT(final_state->total_size_bytes, final_state->total_file_bytes);
 }
 
