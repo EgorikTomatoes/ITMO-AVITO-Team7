@@ -1,16 +1,23 @@
 #pragma once
 
 #include "../Interface/file_system.hpp"
+#include "../utils/memory_pool.hpp"
+#include "../utils/path_utils.hpp"
 
 #include <memory>
 #include <string>
 #include <optional>
+#include <string_view>
 #include <vector>
 #include <utility>
+#include <regex>
 
 
 class TreeFileSystem : public IFileSystem {
 public:
+    TreeFileSystem();
+    ~TreeFileSystem() override;
+
     std::optional<std::string> ReadFile(const std::string& path) const override;
     bool WriteToFile(const std::string& path, const std::string& data) override;
 
@@ -37,18 +44,29 @@ private:
         
         std::string data; // если File
 
-        std::vector<std::unique_ptr<Node>> children; // если Dir
+        std::vector<Node*> children; // если Dir
         Node* parent = nullptr;
 
         Node(std::string node_name, NodeType node_type, Node* node_parent) 
             : name(std::move(node_name)), type(node_type), parent(node_parent) {}
     };
 
-    std::unique_ptr<Node> root_ = std::make_unique<Node>("/", NodeType::Dir, nullptr);
+    utils::MemoryPool<Node> node_pool_;
+    Node* root_ = nullptr;
 
-    size_t total_file_bytes = 0;
-    size_t file_count = 0;
-    size_t dir_count = 1;
+    size_t total_file_bytes_ = 0;
+    size_t file_count_ = 0;
+    size_t dir_count_ = 1;
+
+    void DeleteTree(Node* node);
+
+    Node* GetChild(Node* cur, std::string_view name) const;
+    Node* FindNode(std::string_view path) const;
+
+    size_t GetNodeMemory(const Node* node) const;
+    size_t GetSubtreeMemory(const Node* node) const;
+
+    void FindPattern(const Node* node, const std::string& path, std::string_view pattern, std::vector<std::string>& res) const;
 };
 
 typedef TreeFileSystem Case_A;
