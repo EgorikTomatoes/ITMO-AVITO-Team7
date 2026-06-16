@@ -38,3 +38,26 @@ target_link_libraries(recommender_tests PRIVATE gtest_main gmock_main)
 target_include_directories(recommender_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 gtest_discover_tests(recommender_tests)
+
+
+# блок 3: тесты бенчмарка
+# Линкуем модули бенчмарка напрямую (без main.cpp, в нём своя точка входа).
+# Зависимости от case_A/B/C нет: runner тестируется через заглушку IFileSystem.
+add_executable(benchmark_tests
+    benchmark/test_workload_config.cpp
+    benchmark/test_workload_generator.cpp
+    benchmark/test_csv_writer.cpp
+    benchmark/test_benchmark_runner.cpp
+    ${CMAKE_SOURCE_DIR}/benchmark/WorkloadGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/benchmark/BenchmarkRunner.cpp
+    ${CMAKE_SOURCE_DIR}/benchmark/CsvWriter.cpp
+)
+
+target_link_libraries(benchmark_tests PRIVATE gtest_main)
+
+target_include_directories(benchmark_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/benchmark
+)
+
+gtest_discover_tests(benchmark_tests)
