@@ -22,8 +22,8 @@ struct WorkloadConfig {
     double zipf_s = 1.5;
     double locality = 0.0;
 
-    int ops = 10000;
-    int repeats = 3;
+    int ops = 200;
+    int repeats = 1;
     int seed = 42;
 
     void Validate() const {

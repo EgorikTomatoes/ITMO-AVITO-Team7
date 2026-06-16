@@ -12,6 +12,5 @@ void WriteCsvRow(
     std::ostream& out,
     const std::string& approach,
     const WorkloadConfig& cfg,
-    int repeat,
     const BenchmarkResult& result
 );

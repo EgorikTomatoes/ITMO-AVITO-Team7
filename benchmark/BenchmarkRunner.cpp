@@ -1,10 +1,10 @@
 #include "BenchmarkRunner.hpp"
 
-#include <chrono>
 #include <algorithm>
+#include <chrono>
 #include <numeric>
 
-namespace  {
+namespace {
 
 void RunSingleOperation(IFileSystem& fs, const Operation& op) {
     switch (op.type) {
@@ -36,7 +36,25 @@ void RunSingleOperation(IFileSystem& fs, const Operation& op) {
 
 }
 
-BenchmarkResult BenchmarkRunner::Run(IFileSystem& fs, const std::vector<Operation>& operations) {
+void BenchmarkRunner::RunSetup(
+    IFileSystem& fs,
+    const std::vector<Operation>& operations
+) {
+    for (const auto& op : operations) {
+        RunSingleOperation(fs, op);
+    }
+}
+
+BenchmarkResult BenchmarkRunner::Run(
+    IFileSystem& fs,
+    const std::vector<Operation>& operations
+) {
+    BenchmarkResult result;
+
+    if (operations.empty()) {
+        return result;
+    }
+
     std::vector<double> latencies;
     latencies.reserve(operations.size());
 
@@ -61,13 +79,15 @@ BenchmarkResult BenchmarkRunner::Run(IFileSystem& fs, const std::vector<Operatio
 
     double sum = std::accumulate(latencies.begin(), latencies.end(), 0.0);
 
-    BenchmarkResult result;
-    result.avg_latency_us = sum / latencies.size();
+    result.avg_latency_us = sum / static_cast<double>(latencies.size());
 
-    size_t p99Index = static_cast<size_t>(0.99 * (latencies.size() - 1));
+    size_t p99Index = static_cast<size_t>(0.99 * static_cast<double>(latencies.size() - 1));
     result.p99_latency_us = latencies[p99Index];
 
-    result.throughput_ops_sec = operations.size() / totalSeconds;
+    if (totalSeconds > 0.0) {
+        result.throughput_ops_sec =
+            static_cast<double>(operations.size()) / totalSeconds;
+    }
 
     auto systemState = fs.SystemState();
     result.memory_bytes = systemState ? systemState->total_size_bytes : 0;
