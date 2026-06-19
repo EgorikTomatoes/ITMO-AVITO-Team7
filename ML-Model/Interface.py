@@ -1,4 +1,5 @@
 from pathlib import Path
+import runpy
 
 import joblib
 import pandas as pd
@@ -19,6 +20,16 @@ strategies = {
     "throughput": ("throughput_ops_sec", "max"),
 }
 
+
+def get_model_path():
+    model_path = BASE_DIR / "model.pkl"
+
+    if model_path.exists():
+        return model_path
+
+    runpy.run_path(BASE_DIR / "ModelLearner.py")
+    
+    return model_path
 
 def getPredictions(
     D,
@@ -51,8 +62,7 @@ def getPredictions(
     if strategy not in strategies:
         raise ValueError("Unknown strategy")
 
-    model_path = BASE_DIR / "BestModel.pkl"
-
+    model_path = get_model_path()
     model_data = joblib.load(model_path)
     models = model_data["models"]
     feature_columns = model_data["feature_columns"]

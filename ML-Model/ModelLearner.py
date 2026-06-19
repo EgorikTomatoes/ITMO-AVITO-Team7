@@ -99,9 +99,10 @@ for target_name in target_columns:
     models[target_name] = model
     y_pred[target_name] = model.predict(X_test)
 
+print("Model Created!")
 print("R2", r2_score(y_test, y_pred))
 print("MAE", mean_absolute_error(y_test, y_pred))
-print("RMSE", np.sqrt(mean_squared_error(y_test, y_pred)))
+print("RMSE", np.sqrt(mean_squared_error(y_test, y_pred)), "\n")
 
 model_path = BASE_DIR / "model.pkl"
 joblib.dump({
