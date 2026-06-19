@@ -1,0 +1,32 @@
+{
+  "best_params": {
+    "avg_latency_us": {
+      "regressor__max_depth": null,
+      "regressor__max_features": null,
+      "regressor__min_samples_leaf": 4,
+      "regressor__min_samples_split": 10,
+      "regressor__n_estimators": 100
+    },
+    "p99_latency_us": {
+      "regressor__max_depth": null,
+      "regressor__max_features": null,
+      "regressor__min_samples_leaf": 2,
+      "regressor__min_samples_split": 5,
+      "regressor__n_estimators": 300
+    },
+    "memory_bytes": {
+      "max_depth": null,
+      "max_features": null,
+      "min_samples_leaf": 1,
+      "min_samples_split": 2,
+      "n_estimators": 300
+    },
+    "throughput_ops_sec": {
+      "max_depth": null,
+      "max_features": null,
+      "min_samples_leaf": 1,
+      "min_samples_split": 2,
+      "n_estimators": 300
+    }
+  }
+}
