@@ -18,6 +18,7 @@ strategies = {
     "p99": ("p99_latency_us", "min"),
     "memory": ("memory_bytes", "min"),
     "throughput": ("throughput_ops_sec", "max"),
+    "balanced": ("balanced_score", "min"),
 }
 
 
@@ -28,8 +29,8 @@ def get_model_path():
         return model_path
 
     runpy.run_path(BASE_DIR / "ModelLearner.py")
-    
     return model_path
+
 
 def getPredictions(
     D,
@@ -97,22 +98,66 @@ def getPredictions(
     strategy_metric, strategy_type = strategies[strategy]
     recommended_approach = None
     best_value = None
+    strategy_scores = {}
 
-    for approach_name in approaches:
-        value = predictions[approach_name][strategy_metric]
-        if best_value is None:
-            best_value = value
-            recommended_approach = approach_name
-        elif strategy_type == "min" and value < best_value:
-            best_value = value
-            recommended_approach = approach_name
-        elif strategy_type == "max" and value > best_value:
-            best_value = value
-            recommended_approach = approach_name
+    if strategy == "balanced":
+        weights = {
+            "avg_latency_us": 0.4,
+            "p99_latency_us": 0.2,
+            "memory_bytes": 0.2,
+            "throughput_ops_sec": 0.2,
+        }
 
-    return {
+        for approach_name in approaches:
+            strategy_scores[approach_name] = 0
+
+        for metric_name, weight in weights.items():
+            values = [
+                predictions[approach_name][metric_name]
+                for approach_name in approaches
+            ]
+            min_value = min(values)
+            max_value = max(values)
+
+            for approach_name in approaches:
+                value = predictions[approach_name][metric_name]
+
+                if max_value == min_value:
+                    metric_score = 0
+                elif metric_name == "throughput_ops_sec":
+                    metric_score = (max_value - value) / (max_value - min_value)
+                else:
+                    metric_score = (value - min_value) / (max_value - min_value)
+
+                strategy_scores[approach_name] += weight * metric_score
+
+        for approach_name in approaches:
+            value = strategy_scores[approach_name]
+            if best_value is None or value < best_value:
+                best_value = value
+                recommended_approach = approach_name
+
+    else:
+        for approach_name in approaches:
+            value = predictions[approach_name][strategy_metric]
+            if best_value is None:
+                best_value = value
+                recommended_approach = approach_name
+            elif strategy_type == "min" and value < best_value:
+                best_value = value
+                recommended_approach = approach_name
+            elif strategy_type == "max" and value > best_value:
+                best_value = value
+                recommended_approach = approach_name
+
+    result = {
         "predictions": predictions,
         "strategy": strategy,
         "strategy_metric": strategy_metric,
         "recommended_approach": recommended_approach,
     }
+
+    if strategy == "balanced":
+        result["strategy_scores"] = strategy_scores
+
+    return result
