@@ -69,3 +69,15 @@ Testing/
 
 # vscode
 .vscode
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# recommender artifacts
+recommender/data/
+
+# trained models
+*.pkl
