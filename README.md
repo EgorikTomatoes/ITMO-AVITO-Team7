@@ -40,8 +40,8 @@ ITMO-AVITO-Team7/
 
 | Участник | Зона | Ключевые каталоги |
 |---|---|---|
-| Dev 1 | Интерфейс, подход A, утилиты | `Interface/`, `case_A/` |
-| Dev 2 | Подходы B и C | `case_B/`, `case_C/`, `utils/` |
+| Dev 1 | Интерфейс, подход A | `Interface/`, `case_A/` |
+| Dev 2 | Подходы B и C, утилиты | `case_B/`, `case_C/`, `utils/` |
 | Dev 3 | Генератор нагрузок, бенчмарк | `benchmark/` |
 | Dev 4 | ML-модели, предсказания | `ML-Model/` |
 | Dev 5 | Рекомендатель, пайплайн, тесты | `recommender/`, `tests/` |
