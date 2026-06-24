@@ -81,3 +81,5 @@ recommender/data/
 
 # trained models
 *.pkl
+
+.typ
