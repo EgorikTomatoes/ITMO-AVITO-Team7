@@ -27,18 +27,19 @@ include(GoogleTest)
 gtest_discover_tests(fs_core_tests)
 
 
-# блок 2: тесты рекомендательной системы
-add_executable(recommender_tests
-    recommender/test_model_mocks.cpp
-    recommender/test_decision_logic.cpp
+# блок 2: тесты рекомендательной системы (Python, recommender/)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+add_test(
+    NAME recommender_tests
+    COMMAND ${Python3_EXECUTABLE} -m unittest discover
+            -s ${CMAKE_SOURCE_DIR}/tests/recommender
+            -p "test_*.py"
+            -v
 )
-
-target_link_libraries(recommender_tests PRIVATE gtest_main gmock_main)
-
-target_include_directories(recommender_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
-
-gtest_discover_tests(recommender_tests)
-
+set_tests_properties(recommender_tests PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
 
 # блок 3: тесты бенчмарка
 # Линкуем модули бенчмарка напрямую (без main.cpp, в нём своя точка входа).
